@@ -2,6 +2,7 @@
 import pickle
 
 import numpy as np
+# from matplotlib import pyplot as plt
 
 board = np.array([[" ", " ", " "], [" ", " ", " "], [" ", " ", " "]])
 
@@ -57,9 +58,9 @@ class Game:
     def check_positions_available(self):
         array_positions = []
         for i in range(NUMBER_ROWS):
-            for j in range(NUMBER_COLS):
-                if self.board[i][j] == " ":
-                    array_positions.append((i, j))
+            for m in range(NUMBER_COLS):
+                if self.board[i][m] == " ":
+                    array_positions.append((i, m))
         return array_positions
 
     def give_reward(self):
@@ -72,8 +73,8 @@ class Game:
             self.main_player.feed_reward(0.1)
             self.helper_player.feed_reward(0.5)
 
-    def train(self, rounds):
-        for i in range(rounds):
+    def train(self, games):
+        for i in range(games):
             if i % 1000 == 0:
                 print("Rounds:", i)
             while self.check_end() is None:
@@ -101,24 +102,26 @@ class Game:
         while self.check_end() is None:
             computer_action = self.main_player.action(self.check_positions_available(), self.board, "X")
             self.board[computer_action] = "X"
-            self.draw_board()
+            # self.draw_board()
             if self.check_end() is not None:
                 if self.check_end() == 1:
-                    print(self.main_player.name, "wins!")
+                    # print(self.main_player.name, "wins!")
+                    return 1
                 else:
-                    print("It's a tie!")
-                break
+                    # print("It's a tie!")
+                    return 0
             else:
-                human_action = self.helper_player.action(self.check_positions_available())
+                human_action = self.helper_player.action(self.check_positions_available(), self.board, "O")
                 self.board[human_action] = "O"
                 if self.check_end() is not None:
                     if self.check_end() == -1:
-                        self.draw_board()
-                        print(self.helper_player.name, "wins!")
+                        # self.draw_board()
+                        # print(self.helper_player.name, "wins!")
+                        return -1
                     else:
-                        self.draw_board()
-                        print("It's a tie!")
-                    break
+                        # self.draw_board()
+                        # print("It's a tie!")
+                        return 0
 
 
 class Human:
@@ -176,19 +179,70 @@ class Computer:
     def load_policy(self, filename):
         file = open(filename, "rb")
         self.states_value = pickle.load(file)
-        print(self.states_value)
+        # print(self.states_value)
         file.close()
 
 
 if __name__ == '__main__':
-    # player1 = Computer("Player1")
-    # player2 = Computer("Player2")
-    # game = Game(player1, player2)
-    # game.train(5000)
-    # player1.save_policy("first_try")
+    # rounds = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000]
+    rounds = 5000
+    # random_rate = np.arange(0, 1, 0.1)
+    # learning_rate = np.arange(0.1, 1.1, 0.1)
+    # learning_rate = [1.1]
+    # decay = np.arange(0.1, 2, 1.8)
+    # wins_number = [76, 56, 79, 79, 86, 89, 91, 79, 81, 94, 97, 87, 89]
+    all_wins1 = []
+    all_wins2 = []
+    for k in range(10):
+        wins_number1 = []
+        wins_number2 = []
+        player1 = Computer("Player1")
+        player2 = Computer("Player2")
+        game = Game(player1, player2)
+        game.train(games=rounds)
+        player1.save_policy("policy1_reward{}".format(k))
 
-    computer = Computer("Computer", random_rate=0)
-    computer.load_policy("first_try")
-    human = Human("Human")
-    game = Game(computer, human)
-    game.play()
+        results1 = []
+        for j in range(100):
+            computer1 = Computer("Computer", random_rate=0)
+            computer1.load_policy("policy1_reward{}".format(k))
+            random = Computer("Random", random_rate=1)
+            random.load_policy("policy1_reward{}".format(k))
+            game1 = Game(computer1, random)
+            result1 = game1.play()
+            results1.append(result1)
+
+        wins_number1.append(results1.count(1))
+        wins_number2.append(results1.count(0))
+
+        all_wins1.append(wins_number1)
+        all_wins2.append(wins_number2)
+
+    print(all_wins1)
+    print(all_wins2)
+    print("Won games:", np.average(all_wins1))
+    print("Draw games:", np.average(all_wins2))
+
+    # print(all_wins1)
+    # show_average1 = []
+    # # show_average2 = []
+    # for i in range(len(random_rate)):
+    #     show_average1.append(np.average([sub[i] for sub in all_wins1]))
+    # show_average2.append(np.average([sub[i] for sub in all_wins2]))
+    # plt.plot(decay, show_average1, label="Player 1")
+    # # plt.plot(random_rate, show_average2, label="Player 2")
+    # # plt.xscale("log")
+    # plt.title("Number of wins and draws for multiple runs")
+    # plt.xlabel("Decay "r"$\gamma$")
+    # plt.ylabel("Number of wins and draws")
+    # # plt.legend()
+    # plt.show()
+    #
+    # plt.plot(decay, wins_number1, label="Player 1")
+    # # plt.plot(random_rate, wins_number2, label="Player 2")
+    # # plt.xscale("log")
+    # plt.title("Number of wins and draws for one run")
+    # plt.xlabel("Decay "r"$\gamma$")
+    # plt.ylabel("Number of wins and draws")
+    # # plt.legend()
+    # plt.show()
